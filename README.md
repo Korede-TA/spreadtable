@@ -1,16 +1,20 @@
-This is a starter kit for bucklescript with [tea](https://github.com/OvermindDL1/bucklescript-tea). It uses [rollup.js](https://rollupjs.org/) to package the javascript and [serve](https://github.com/zeit/serve) to serve the release folder.
+# spreadtable
+Experimental speadsheet-based interface for structured programming based on "structured grammars".
 
-# Organisation
+Think of it as a grid-based terminal of sorts. 
 
-* The bucklescript code goes into _src/*.ml_
-* The _release_ folder contains an _index.html_ and rollup bundles your js here in _main.js_
+The idea came when i realized what the terminal represents as something of the base-level substrate for interacting with computers. 
+The terminal is something of a relic of history, being an emulator of pre-CRT computers that utilized teletypes to display the output of computations. 
 
-# Getting started
+The spreadsheet metaphor is appealing because of it's seeming approachability & readability to the average user and it's unique suitability for [homoiconicity](https://en.wikipedia.org/wiki/Homoiconicity). 
+
+Given that the terminal serves as both a REPL for interacting with the computer programs, as well as a platform for editors for creating/editing programs, i believe this interface can serve a similar purpose.
+
+# Developing
 
 * copy or clone this repository
-* change the names in package.json
-* in the _rollup.config.js_ you can also change the name of the output, you also have to change this name in de _index.html_
-* for consistency, also change the name in _bsconfig.json_
+* The bucklescript code goes into _src/*.ml_
+* The _release_ folder contains an _index.html_ and rollup bundles your js here in _main.js_
 
 ## Install
 
