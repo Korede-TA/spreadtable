@@ -29,6 +29,7 @@
     "serve": "10.0.2"
   },
   "dependencies": {
+    "@glennsl/bs-json": "^4.0.0",
     "tablecloth-bucklescript": "0.0.5"
   }
 }

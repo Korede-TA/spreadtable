@@ -3,6 +3,7 @@ open Expect
 open! Expect.Operators
 open Main
 
+(*
 let testInit () = 
   let rc : Coordinates.t =
     { prefix = []
@@ -27,10 +28,13 @@ let testInit () =
   ; selectedCells = []
   ; contextMenu = defaultContextMenu
   }
+  *)
 
 let () = 
 
-describe "Coordinates.prefixString works" (fun () -> 
-  true
-  (* let m = update *)
+describe "Coordinates.show" (fun () -> 
+  test "computes nesting correctly" (fun () ->
+    let c = [(1,1); (1,1)] in
+    expect (C.show c) = "root-A1"
+  );
 )

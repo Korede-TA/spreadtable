@@ -13,7 +13,13 @@
   "package-specs": [{ "module": "es6", "in-source": true }],
   "suffix": ".bs.js",
   "refmt": 3,
-  "bs-dependencies": ["bucklescript-tea", "tablecloth-bucklescript", "@glennsl/bs-jest"],
+  "bs-dependencies": [
+    "bucklescript-tea",
+    "tablecloth-bucklescript",
+    "@glennsl/bs-jest",
+    "@glennsl/bs-json" 
+  ],
+  "bs-dev-dependencies": ["@glennsl/bs-jest"],
   "bsc-flags": [
     "-bs-super-errors -no-alias-deps",
     "-color",

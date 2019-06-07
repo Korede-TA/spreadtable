@@ -5,6 +5,7 @@ module Caml = struct
 end
 
 include Tablecloth
+
 (*
 include (
   Tablecloth :
@@ -17,7 +18,6 @@ include (
     (*  and module List := Tablecloth.List *) )
 *)
 
-
 let optValueExn (value : 'a option) : 'a =
   match value with Some v -> v | None -> raise Not_found
 
@@ -27,12 +27,10 @@ let classes (classes : string list) =
 (*
 let indexRange start stop = Array.range ?from:start stop
 *)
-let rec indexRange start stop = 
-  if start != stop then 
-    [start+1] @ (indexRange (start+1) stop)
-  else [] 
+let rec indexRange start stop =
+  if start != stop then [start + 1] @ indexRange (start + 1) stop else []
 
-  (*
+(*
 module Option = struct
   include Tablecloth.Option
 
