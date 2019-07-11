@@ -73,7 +73,7 @@
 .dropdown-content a:hover {background-color: #f1f1f1}
 .dropdown-content a:focus {background-color: #f1f1f1; outline: none}
 
-.dropdown:focus-within .dropdown-content {
+.dropdown:focus-within > .dropdown-content {
   display: block;
 }
 

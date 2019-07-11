@@ -16,6 +16,8 @@ that make up a specfic language.
 
 Given that the terminal serves as both a REPL for interacting with the computer programs, as well as a platform for editors for creating/editing programs, i believe this interface can serve a similar purpose. Spreadtable aims to become a common substrate for editing structured programs, much like teletype emulators are something of a common substrate for editing free-form text.
 
+A more extensive design decision is available [here](https://docs.google.com/document/d/1Sq8BbzPhFWX8j5_7Rtlu1IfgGYJRWQ3Sb5A__jI3AE4/edit?usp=sharing)
+
 
 # Developing
 
