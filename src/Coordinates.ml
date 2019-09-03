@@ -2,10 +2,14 @@ open Prelude
 
 type t = (int * int) list
 
-(*type t = 
+(*type t =
   { prefix : (int * int) list (* in the case of nested *)
   ; head : (int * int) }
   *)
+
+(* standard base coordinates *)
+let coord_ROOT = [(1,1)]
+let coord_META = [(2,1)]
 
 exception InvalidCoord of (string * t)
 
@@ -49,12 +53,12 @@ let showRow (i : int) : string = string_of_int i
 let showRC_ (r, c) = (c |> showCol) ^ (r |> showRow)
 
 (*
-let show (c : t) : string = 
-  let (prefix, r) = 
-    (match fullRow c with 
-    | (prefix, r) -> 
+let show (c : t) : string =
+  let (prefix, r) =
+    (match fullRow c with
+    | (prefix, r) ->
         ("root-" ^ (String.join ~sep:"-" (List.map ~f:showRC_ prefix)), r)
-    | ([], r) -> 
+    | ([], r) ->
         ("root", r))
   in
   let (_, c) = fullCol c in
@@ -65,17 +69,24 @@ let show (c : t) : string =
   match c with
   | [] -> raise (InvalidCoord ("empty coord", c))
   | [(1, 1)] -> "root"
-  | c when List.last c = Some (1, 1) ->
+  | [(2, 1)] -> "meta"
+  | c when List.last c = Some (1, 1) || List.last c = Some (2, 1) ->
       let rest =
         c |> List.reverse |> List.tail |> Option.withDefault ~default:[]
       in
-      "root-" ^ (rest |> List.map ~f:showRC_ |> String.join ~sep:"-")
-  | _ -> raise (InvalidCoord ("root != 1,1", c))
+      let prefix =
+        if List.last c = Some (1, 1) then "root-"
+        else if List.last c = Some (2, 1) then "meta-"
+        else raise (InvalidCoord ("root != 1,1 or meta != 2,1", c))
+      in
+      prefix ^ (rest |> List.map ~f:showRC_ |> String.join ~sep:"-")
+  | _ -> raise (InvalidCoord ("root != 1,1 or meta != 2,1", c))
 
 let showPrefix (c : t) : string =
   match c with
   | [] -> raise (InvalidCoord ("empty coord", c))
-  | [_] -> "root"
+  | [(1, 1)] -> "root"
+  | [(2, 1)] -> "meta"
   | _ :: prefix -> show prefix
 
 let range (prefix : t) (rows : int) (cols : int) (rowOffset : int)
@@ -109,16 +120,16 @@ let areContiguous (cs : t list) : bool =
 *)
 
 (* TODO: implement neighbors
-type neighbors = 
+type neighbors =
   { n: coord option
   ; nw: coord option
   ; ne: coord option
-  ; w : coord option 
+  ; w : coord option
   ; e : coord option
   ; s : coord option
   ; sw : coord option
   ; se : coord option }
 
-let neighbours (c : coord) : neighbors = 
+let neighbours (c : coord) : neighbors =
   {}
 *)
