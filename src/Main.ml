@@ -5,6 +5,8 @@ open Tea.Html2.Attributes
 module C = Coordinates
 open Keyboard
 
+let glob_autocompleteEnabled = true
+
 type span = int * int
 
 (* (spannedRows, spannedCols) *)
@@ -40,15 +42,10 @@ let defaultContextMenu =
  * of each of it's `Write`-able childGrammars *)
 let grammarAsSuggestion (m : model) (g : Grammar.t) : string =
   let open Grammar in
-  let children =
-    StrDict.toList m.grammarMap
-    |> List.map ~f:Tuple2.second
-    |> List.filter ~f:(fun g -> C.parent g.coord = Some g.coord)
-  in
   let writeableChildren =
     List.filter
-      ~f:(fun c -> match c with {mode = Input _; _} -> true | _ -> false)
-      children
+      ~f:(fun c -> match c with {mode= Input _; _} -> true | _ -> false)
+      (children m.grammarMap g)
     |> List.map ~f:(fun g -> g.name)
   in
   g.name ^ String.join ~sep:" " writeableChildren
@@ -72,8 +69,9 @@ let update (m : model) = function
       let grammarMap =
         StrDict.update ~key:(C.show c)
           ~f:(fun v ->
-            match v with 
-            | Some gm -> Some {gm with mode = Input data} 
+            match v with
+            | Some ({mode= Input _} as gr) -> Some {gr with mode= Input data}
+            | Some gr -> Some gr
             | None -> None )
           m.grammarMap
       in
@@ -89,73 +87,90 @@ let update (m : model) = function
       let parentGrammar = StrDict.get ~key:cs m.grammarMap |> optValueExn in
       let newChildCoords =
         C.range parentGrammar.coord layout.rows layout.cols 0 0
-        (*[ { C.prefix = [(1,1);(2,2)]; C.head = (1,1) }
-        ; { C.prefix = [(1,1);(2,2)]; C.head = (1,2) }
-        ; { C.prefix = [(1,1);(2,2)]; C.head = (2,1) }
-        ; { C.prefix = [(1,1);(2,2)]; C.head = (2,2) }
-        ]*)
-      in
-      (* add new coords to grammarMap *)
-      let newGrammarMap =
-        List.foldl
-          ~f:(fun c gm ->
-            StrDict.insert ~key:(C.show c)
-              ~value:(Grammar.singleton "default" c)
-              gm )
-          ~init:m.grammarMap newChildCoords
       in
       (* update tableLayout of parent grammar *)
       let newGrammarMap =
         StrDict.update ~key:cs
           ~f:(fun v ->
             match v with
-            | Some gm -> Some {gm with mode = Table layout}
+            | Some gm -> Some {gm with mode= Table layout}
             | None -> Some parentGrammar )
-          newGrammarMap
+          m.grammarMap
       in
-      (*Js.log2 
+      (* add new coords to grammarMap *)
+      let newGrammarMap =
+        List.foldl
+          ~f:(fun c gm ->
+            StrDict.insert ~key:(C.show c) ~value:(singleton "default" c) gm )
+          ~init:newGrammarMap newChildCoords
+      in
+      (*Js.log2
         "new grammarMap: "
         (StrDict.keys newGrammarMap |> String.join ~sep:",");*)
-      let r = {m with grammarMap= newGrammarMap} in
       Js.log2 "new grammarMap: "
         (StrDict.keys newGrammarMap |> String.join ~sep:",") ;
-      r
+      {m with grammarMap= newGrammarMap}
   | SelectCells _ -> m
-  | AutoCompeleteGrammar _ -> 
+  | AutoCompeleteGrammar (c, gr) ->
       (* Web_node. *)
-      m
-  | SelectBelow _ -> 
-      m
+      let grammarMap = Grammar.copy gr c m.grammarMap in
+      {m with grammarMap}
+  | SelectBelow _ -> m
   | ActivateCell c ->
       let open Grammar in
-      let cs = (C.show c) in
+      let cs = C.show c in
       let gr = StrDict.get ~key:cs m.grammarMap |> optValueExn in
-      let grMap = StrDict.update ~key:cs ~f:(fun v -> 
-        match v with 
-        | Some _ -> Some { gr with status = Active }
-        | _ -> None)
-        m.grammarMap
+      let grMap =
+        StrDict.update ~key:cs
+          ~f:(fun v ->
+            match v with Some _ -> Some {gr with status= Active} | _ -> None )
+          m.grammarMap
       in
-      { m with grammarMap = grMap }
-
+      {m with grammarMap= grMap}
 
 let init2 () =
-  let rc : C.t = [(1, 1)] in
-  let childCoords = C.range rc 5 5 0 0 in
+  (* default displayed root grammar cells *)
+  let childCoords = C.range C.coord_ROOT 5 5 0 0 in
   let grammarMap =
-    List.map ~f:(fun c -> (C.show c, Grammar.singleton "default" c)) childCoords
+    childCoords
+    |> List.map ~f:(fun c -> (C.show c, Grammar.singleton "default" c))
     |> StrDict.fromList
+  in
+  (* add read and write grammars *)
+  let grammarMap =
+    grammarMap
+    |> Grammar.def_ReadGrammar ((1, 1) :: C.coord_META)
+    |> Grammar.def_WriteGrammar ((2, 1) :: C.coord_META)
   in
   let open Grammar in
   let root =
     { name= "root"
-    ; mode = Table {rows= 5; cols= 5; spans= []}
-    ; coord= rc
-    ; status = Inactive 
-    ; style = Grammar.defaultStyle }
+    ; mode= Table {rows= 5; cols= 5; spans= []}
+    ; coord= C.coord_ROOT
+    ; status= Inactive
+    ; style= defaultStyle }
+  in
+  let meta =
+    { name= "meta"
+    ; mode= Table {rows= 10; cols= 5; spans= []}
+    ; coord= C.coord_META
+    ; status= Inactive
+    ; style= defaultStyle }
   in
   let grammarMap =
-    StrDict.insert ~key:(C.show root.coord) ~value:root grammarMap
+    let rootA1 = [(1, 1); (1, 1)] in
+    let rootA1Layout = Table {rows= 2; cols= 2; spans= []} in
+    grammarMap
+    |> StrDict.insert ~key:(C.show root.coord) ~value:root
+    |> StrDict.insert ~key:(C.show meta.coord) ~value:meta
+    |> StrDict.update ~key:(C.show rootA1) ~f:(function
+         | Some v -> Some {v with mode= rootA1Layout}
+         | None -> None )
+    (*|> (fun m ->
+      (C.range rootA1 2 2 0 0)
+      |> List.foldl ~init:m ~f:(fun c m ->
+        StrDict.insert ~key:(C.show c) ~value:(singleton (C.show rootA1) c) m))
+        *)
   in
   { rootGrammar= root
   ; grammarMap
@@ -173,17 +188,18 @@ let onCtrlEnter msg =
   in
   on "keypress" (Tea_json.Decoder.andThen isCtrlEnter key_event)
 
-let onKeyEnter msg = 
+let onKeyEnter msg =
   let isEnter {ctrl; key_code} =
-    if key_code = 13 && (not ctrl) then Tea_json.Decoder.succeed msg
+    if key_code = 13 && not ctrl then Tea_json.Decoder.succeed msg
     else Tea_json.Decoder.fail "notEnter"
   in
   on "keypress" (Tea_json.Decoder.andThen isEnter key_event)
 
 let onCellChange (handler : string -> int -> msg) =
-  on "change" (Tea_json.Decoder.map2 handler
-    (Tea_json.Decoder.at ["target"; "value"] Tea_json.Decoder.string)
-    (Tea_json.Decoder.at ["target"; "width"] Tea_json.Decoder.int))
+  on "change"
+    (Tea_json.Decoder.map2 handler
+       (Tea_json.Decoder.at ["target"; "value"] Tea_json.Decoder.string)
+       (Tea_json.Decoder.at ["target"; "width"] Tea_json.Decoder.int))
 
 let onShiftTab msg =
   let isCtrlEnter {shift; key_code} =
@@ -193,55 +209,69 @@ let onShiftTab msg =
   on "keypress" (Tea_json.Decoder.andThen isCtrlEnter key_event)
 
 let rec viewGrammar (m : model) (coord : C.t) : msg Vdom.t =
-  Js.log2 "initial grammarMap: "
-    (StrDict.keys m.grammarMap |> String.join ~sep:",") ;
+  Js.log2 "rendering grammar" (C.show coord) ;
   let grammar = StrDict.get ~key:(C.show coord) m.grammarMap in
   let grammar =
-    match grammar with Some g -> g | None -> Grammar.singleton "default" coord
+    match grammar with
+    | Some g -> g
+    | None -> Grammar.singleton "default" coord
   in
   let open Grammar in
-  let wrapTD node =
-    td
+  let key = "key-" ^ C.show coord in
+  let _coordLabel =
+    key |> String.split ~on:"-" |> List.head |> Option.withDefault ~default:key
+  in
+  let wrap nodes =
+    Js.log4 "=" (C.show coord) "="
+      (List.map ~f:Vdom.renderToHtmlString nodes |> String.join ~sep:"\n") ;
+    div
       [ classes
           [ "cell"
           ; "dropdown"
           ; "row-" ^ C.showPrefix coord ^ (coord |> C.row |> C.showRow)
-          ; "col-" ^ C.showPrefix coord ^ (coord |> C.col |> C.showCol) ] 
+          ; "col-" ^ C.showPrefix coord ^ (coord |> C.col |> C.showCol) ]
       ; styles (Grammar.getCSS grammar)
       ; id ("cell-" ^ C.show coord) ]
-      [ node ]
+      nodes
   in
-  (match grammar.mode with
+  let key = key ^ "-data" in
+  ( match grammar.mode with
   | Input v ->
-      input'
-        [ classes
-            ["cell-data"; "cell-data-" ^ C.show coord]
-        ; id ("cell-data-" ^ C.show coord)
-        ; type' "text"
-        ; onKeyEnter (ActivateCell (coord)) 
-        ; value v ]
-        []
+      [ input' ~key:(key ^ "_input")
+          [ classes ["cell-data"; key]
+          ; id key
+          ; type' "text"
+          ; onKeyEnter (ActivateCell coord)
+          ; onCtrlEnter (AddNestedTable (coord, defaultNestedTableLayout))
+          ; value v ]
+          []
+        (*; span [class' "cell-data-coord"] [text coordLabel]*)
+      ; viewAutocomplete m coord ]
   | Text v ->
-      p
-        [ classes
-            ["cell-data"; "cell-data-" ^ C.show coord]
-        ; id ("cell-data-" ^ C.show coord)]
-        [ text v ]
+      [ p ~key:(key ^ "_text")
+          [classes ["cell-data"; "cell-data-" ^ C.show coord]; id key]
+          [text v]
+      (*; span [class' "cell-data-coord"] []*) ]
   | Button (name, gr) ->
-      button
-        [ ]
-        [ text (name ^ gr.name) ]
+      [button ~key:(key ^ "_button") [] [text (name ^ gr.name)]]
   | Table layout ->
-    (* let rowPrefix = (match C.parent coord with 
-                    | None -> [] 
-                    | Some r -> C.fullRow r) in*)
-    let rows =
-      List.map
-        ~f:(fun i -> viewRow m (C.toList coord, i))
-        (List.initialize layout.rows succ)
-    in
-    table [class' "sheet"; id (C.showPrefix grammar.coord ^ "sheet")] rows)
-  |> wrapTD
+      let _rows =
+        (* TODO: delete this *)
+        List.map
+          ~f:(fun i -> viewRow m (C.toList coord, i))
+          (List.initialize layout.rows succ)
+      in
+      let children =
+        Grammar.children m.grammarMap grammar
+        |> List.map ~f:(fun g -> viewGrammar m g.coord)
+      in
+      let _t =
+        [ div
+            [class' "sheet"; id (C.showPrefix grammar.coord ^ "sheet")]
+            children ]
+      in
+      children )
+  |> wrap
 
 and viewRow (m : model) (rowIndex : C.dimensionIndex) : msg Vdom.t =
   let open Grammar in
@@ -249,55 +279,21 @@ and viewRow (m : model) (rowIndex : C.dimensionIndex) : msg Vdom.t =
     StrDict.toList m.grammarMap
     |> List.map ~f:Tuple2.second
     |> List.filter ~f:(fun g ->
-           (*Js.log2 "rowIndex: " (C.ppDimensionIndex rowIndex);
-          Js.log2 "coordRow: " (C.ppDimensionIndex (C.fullRow g.coord));*)
            C.fullRow g.coord = rowIndex && C.show g.coord != "root" )
-    |> List.map ~f:(fun g -> viewCell m g.coord)
+    |> List.map ~f:(fun g -> viewGrammar m g.coord)
   in
-  tr [] cells
-
-and viewCell (m : model) (coord : C.t) : msg Vdom.t =
-  td
-    [ classes
-        [ "cell"
-        ; "dropdown"
-        ; "row-" ^ C.showPrefix coord ^ (coord |> C.row |> C.showRow)
-        ; "col-" ^ C.showPrefix coord ^ (coord |> C.col |> C.showCol) ]
-    ; id ("cell-" ^ C.show coord) ]
-    (*; onWithOptions "click" opts (SelectCells coord) ]*)
-    [viewGrammar m coord]
-    (* 
-    ( match grammar with
-    | {layout= {rows; cols; _}; _} when rows > 1 || cols > 1 ->
-        [viewGrammar m coord]
-    | {active = false} ->
-        [ input'
-            [ classes
-                ["cell-data"; "cell-data-inactive"; "cell-data-" ^ C.show coord]
-            ; id ("cell-data-" ^ C.show coord)
-            ; type' "text"
-            ; disabled true
-            ; onKeyEnter (ActivateCell (coord)) ]
-            [] ]
-    | {active = true} ->
-        [ input'
-            [ classes
-                ["cell-data"; "cell-data-active"; "cell-data-" ^ C.show coord]
-            ; id ("cell-data-" ^ C.show coord)
-            ; type' "text"
-            ; onCtrlEnter (AddNestedTable (coord, defaultNestedTableLayout))
-            ; onCellChange (fun v w -> ChangeCellData (coord, v, w)) ]
-            []
-        ; viewAutocomplete m coord ] )*)
+  div [class' "row"] cells
 
 and viewAutocomplete (m : model) (coord : C.t) : msg Vdom.t =
-  let suggestions = ["root-A1"; "root-A2-A2"; "root-A2-A3"] in
+  let readGrammarCoord = (1, 1) :: C.coord_META |> C.show in
+  let writeGrammarCoord = (2, 1) :: C.coord_META |> C.show in
+  let suggestions = ["root-A1"; readGrammarCoord; writeGrammarCoord] in
   let suggestionGrammars =
     List.map ~f:(fun s -> StrDict.get ~key:s m.grammarMap) suggestions
     |> Option.values
   in
   let suggestionGrammars = suggestionGrammars in
-  if false then
+  if glob_autocompleteEnabled then
     div
       [class' "dropdown-content"]
       ( suggestionGrammars
@@ -319,10 +315,56 @@ let viewContextMenu (m : model) : msg Vdom.t =
                [text name] )
            m.contextMenu.actions) ]
 
+let viewGrid (m : model) (coord : C.t) : msg Vdom.t list =
+  let open Grammar in
+  let grammar = StrDict.get ~key:(C.show coord) m.grammarMap in
+  let cells : msg Vdom.t list =
+    StrDict.toList m.grammarMap
+    |> List.map ~f:(fun (coordStr, g) ->
+           let key = "key-" ^ coordStr in
+           div
+             [ classes
+                 [ "cell"
+                 ; "dropdown"
+                 ; "row-" ^ C.showPrefix coord ^ (coord |> C.row |> C.showRow)
+                 ; "col-" ^ C.showPrefix coord ^ (coord |> C.col |> C.showCol)
+                 ]
+             ; styles
+                 ( grammar |> Option.map ~f:getCSS
+                 |> Option.withDefault ~default:[] )
+             ; id ("cell-" ^ coordStr) ]
+             ( match g.mode with
+             | Input v ->
+                 [ input' ~key:(key ^ "_input")
+                     [ classes ["cell-data"; key]
+                     ; id key
+                     ; type' "text"
+                     ; onKeyEnter (ActivateCell coord)
+                     ; onCtrlEnter
+                         (AddNestedTable (coord, defaultNestedTableLayout))
+                     ; value v ]
+                     []
+                   (*; span [class' "cell-data-coord"] [text coordLabel]*)
+                 ; viewAutocomplete m coord ]
+             | Text v ->
+                 [ p ~key:(key ^ "_text")
+                     [classes ["cell-data"; "cell-data-" ^ coordStr]; id key]
+                     [text v]
+                 (*; span [class' "cell-data-coord"] []*) ]
+             | Button (name, gr) ->
+                 [button ~key:(key ^ "_button") [] [text (name ^ g.name)]]
+             | Table layout -> [] ) )
+  in
+  cells
+
 let view (m : model) : msg Vdom.t =
+  Js.log2 "initial grammarMap: "
+    (StrDict.keys m.grammarMap |> String.join ~sep:" | ") ;
   div
-    [onRightClick (ToggleContextMenu (m.rootGrammar.coord, true))]
-    [ viewGrammar m m.rootGrammar.coord
-    ; (if m.contextMenu.isVisible then viewContextMenu m else noNode) ]
+    [ onRightClick (ToggleContextMenu (m.rootGrammar.coord, true))
+    ; styles (Grammar.getGridCSS ~root:m.rootGrammar m.grammarMap) ]
+    ( [ (* viewGrammar m m.rootGrammar.coord *)
+        (if m.contextMenu.isVisible then viewContextMenu m else noNode) ]
+    @ viewGrid m m.rootGrammar.coord )
 
 let main = beginnerProgram {model= init2 (); update; view}

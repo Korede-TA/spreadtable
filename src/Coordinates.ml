@@ -8,8 +8,9 @@ type t = (int * int) list
   *)
 
 (* standard base coordinates *)
-let coord_ROOT = [(1,1)]
-let coord_META = [(2,1)]
+let coord_ROOT = [(1, 1)]
+
+let coord_META = [(2, 1)]
 
 exception InvalidCoord of (string * t)
 
@@ -113,6 +114,21 @@ let range (prefix : t) (rows : int) (cols : int) (rowOffset : int)
   |> List.flatten
 
 let ppList (cs : t list) : string = String.join ~sep:"\n" (List.map ~f:show cs)
+
+module Decode = struct
+  let t json =
+    let open Json.Decode in
+    json |> list (tuple2 int int)
+end
+
+(*
+module Encode = struct
+  let t t =
+    let open! Json.Encode in (
+      list (tuple2 (int int)
+    )
+end
+*)
 
 (* TODO: implement this, used for determining if multiple cells coordinates are contiguous
 let areContiguous (cs : t list) : bool =

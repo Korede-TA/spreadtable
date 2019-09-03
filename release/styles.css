@@ -4,24 +4,38 @@
 }
 
 .sheet {
+  display: table;
   /* border: 1px solid grey; */
   border-collapse: collapse;
   font-family: "Lucida Console", Monaco, monospace;
   /*width: calc(var(--cell-width) * 26);*/
 }
 
-.sheet input {
+.cell {
+  display: table;
+  /* border: 1px solid grey; */
+  border-collapse: collapse;
+  font-family: "Lucida Console", Monaco, monospace;
+  /*width: calc(var(--cell-width) * 26);*/
+}
+
+input.cell-data {
   font-family: "Lucida Console", Monaco, monospace;
   font-size: 20px;
 }
 
+.row {
+  display: table-row;
+}
+
 .cell {
-  height: 20px;
-  max-height: 20px;
+  display: table-cell;
+  min-height: 20px;
+  /* max-height: 20px; */
   min-width: var(--cell-width);
   /* max-width: 200px; */
-  border: 1px dotted grey;
-  padding: 2px;
+  /* border: 1px dotted grey; */
+  padding: 0px;
 }
 
 .cell:focus {
@@ -29,6 +43,20 @@
   background-color: color;
   outline: none;
 }
+
+/*
+.cell:not(#cell-root):hover {
+  background-color: grey;
+}
+
+.cell:not(#cell-root):hover + .cell {
+  background-color: grey;
+}
+
+.cell + .cell:not(#cell-root):hover {
+  background-color: grey;
+}
+*/
 
 .cell:active {
   outline: none;
