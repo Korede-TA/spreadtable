@@ -152,36 +152,55 @@ let getCSS (g : t) =
      ; ("grid-row", rowStart ^ " / " ^ rowEnd)]) *)
 
 let getGridCSS ~(root : t) (gm : map) =
-  let defaultColWidth = "300px" in
-  let rec templateCols g =
-    let cols = "[grid-column-" ^ C.show g.coord ^ "start]" in
-    let children = children gm g in
+  (* let defaultColWidth = "300px" in
+  let defaultRowHeight = "30px" in
+  let rec templateCols ?(accum = []) g =
+    let gridCol = C.showPrefix g.coord ^ "-" ^ (g.coord |> C.col |> C.showCol) in
     let cols =
-      if children <> [] then
-        cols ^ " 0px "
-        ^ (List.map ~f:templateCols children |> String.join ~sep:" ")
+      let children = children gm g in
+      if (List.member ~value:gridCol accum)
+      then ""
+      else if children <> [] then
+        "[grid-column-" ^ gridCol ^ "-start]"
         ^ " 0px "
-      else cols ^ " " ^ defaultColWidth ^ " "
+        ^ (List.map ~f:(templateCols ~accum:(gridCol :: accum)) children |> String.join ~sep:" 0px ")
+        ^ " 0px "
+        ^ "[grid-column-" ^ gridCol ^ "-end]"
+      else
+        "[grid-column-" ^ gridCol ^ "-start]"
+        ^ " " ^ defaultColWidth ^ " "
+        ^ "[grid-column-" ^ gridCol ^ "-end]"
     in
-    let cols = cols ^ "[grid-column-" ^ C.show g.coord ^ "end]" in
     cols
   in
-  let rec templateRows g =
-    let rows = "[grid-row-" ^ C.show g.coord ^ "start]" in
-    let children = children gm g in
+  let rec templateRows ?(accum = []) g =
+    let gridRow = C.showPrefix g.coord ^ "-" ^ (g.coord |> C.row |> C.showRow) in
     let rows =
-      if children = [] then rows ^ " " ^ defaultColWidth ^ " "
-      else
-        rows ^ " 0px "
-        ^ (List.map ~f:templateRows children |> String.join ~sep:" ")
+      let children = children gm g in
+      if (List.member ~value:gridRow accum)
+      then ""
+      else if children <> [] then
+        "[grid-row-" ^ gridRow ^ "-start]"
         ^ " 0px "
+        ^ (List.map ~f:(templateRows ~accum:(gridRow :: accum)) children |> String.join ~sep:" 0px ")
+        ^ " 0px "
+        ^ "[grid-row-" ^ gridRow ^ "-end]"
+      else
+        "[grid-row-" ^ gridRow ^ "-start]"
+        ^ " " ^ defaultRowHeight ^ " "
+        ^ "[grid-row-" ^ gridRow ^ "-end]"
     in
-    let rows = rows ^ "[grid-row-" ^ C.show g.coord ^ "end]" in
     rows
+  in *)
+  let colCount, rowCount =
+    match root.mode with Table {cols; rows} -> cols, rows | _ -> 1, 1
   in
-  [ ("display", "grid")
-  ; ("grid-template-columns", templateCols root)
-  ; ("grid-template-rows", templateRows root) ]
+  let res = [ ("display", "grid")
+  ; ("grid-template-columns", String.repeat ~count:colCount "300px " (* templateCols root *))
+  ; ("grid-template-rows", String.repeat ~count:rowCount "30px " (* templateRows root *)) ]
+  in
+  Js.log2 "grid css" res;
+  res
 
 let rec copy (gr : t) (toC : C.t) (gm : map) : map =
   children gm gr
@@ -198,6 +217,7 @@ let singleton (name : string) (coord : C.t) =
   {name; coord; mode= Input ""; style= defaultStyle; status= Inactive}
 
 let def_ReadGrammar (c : C.t) (gm : map) : map =
+  (* cells within grammar *)
   let symbol =
     { name= "read-grammar-$"
     ; coord= (1, 1) :: c
@@ -219,6 +239,7 @@ let def_ReadGrammar (c : C.t) (gm : map) : map =
     ; mode= Text ""
     ; status= Inactive }
   in
+  (* full grammar *)
   let gr =
     { name= "read-grammar"
     ; coord= c

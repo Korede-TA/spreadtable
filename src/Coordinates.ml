@@ -92,23 +92,17 @@ let showPrefix (c : t) : string =
 
 let range (prefix : t) (rows : int) (cols : int) (rowOffset : int)
     (colOffset : int) : t list =
-  Js.log2 "prefix: " (show prefix) ;
   let prefix = toList prefix in
-  Js.log2 "prefixList: "
     (String.join ~sep:", "
        (List.map ~f:(fun (r, c) -> showCol c ^ string_of_int r) prefix)) ;
   let rs = indexRange rowOffset (rowOffset + rows) in
-  Js.log2 "row range" (String.join ~sep:", " (List.map ~f:string_of_int rs)) ;
   let cs = indexRange colOffset (colOffset + cols) in
-  Js.log2 "col range" (String.join ~sep:", " (List.map ~f:string_of_int cs)) ;
   List.map
     ~f:(fun r ->
       List.map
         ~f:(fun c ->
-          let v = (r, c) :: prefix in
-          Js.log2 "coord " (showCol c ^ string_of_int r) ;
-          Js.log2 "val: " (show v) ;
-          v )
+          (r, c) :: prefix
+           )
         cs )
     rs
   |> List.flatten

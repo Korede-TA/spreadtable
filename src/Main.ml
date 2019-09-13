@@ -7,9 +7,7 @@ open Keyboard
 
 let glob_autocompleteEnabled = true
 
-type span = int * int
-
-(* (spannedRows, spannedCols) *)
+type span = (* (spannedRows, spannedCols) *) int * int
 
 let defaultNestedTableLayout : Grammar.layout = {rows= 3; cols= 3; spans= []}
 
@@ -104,12 +102,9 @@ let update (m : model) = function
             StrDict.insert ~key:(C.show c) ~value:(singleton "default" c) gm )
           ~init:newGrammarMap newChildCoords
       in
-      (*Js.log2
-        "new grammarMap: "
-        (StrDict.keys newGrammarMap |> String.join ~sep:",");*)
       Js.log2 "new grammarMap: "
         (StrDict.keys newGrammarMap |> String.join ~sep:",") ;
-      {m with grammarMap= newGrammarMap}
+      {m with grammarMap = newGrammarMap}
   | SelectCells _ -> m
   | AutoCompeleteGrammar (c, gr) ->
       (* Web_node. *)
@@ -209,7 +204,6 @@ let onShiftTab msg =
   on "keypress" (Tea_json.Decoder.andThen isCtrlEnter key_event)
 
 let rec viewGrammar (m : model) (coord : C.t) : msg Vdom.t =
-  Js.log2 "rendering grammar" (C.show coord) ;
   let grammar = StrDict.get ~key:(C.show coord) m.grammarMap in
   let grammar =
     match grammar with
@@ -222,8 +216,6 @@ let rec viewGrammar (m : model) (coord : C.t) : msg Vdom.t =
     key |> String.split ~on:"-" |> List.head |> Option.withDefault ~default:key
   in
   let wrap nodes =
-    Js.log4 "=" (C.show coord) "="
-      (List.map ~f:Vdom.renderToHtmlString nodes |> String.join ~sep:"\n") ;
     div
       [ classes
           [ "cell"
@@ -319,19 +311,26 @@ let viewGrid (m : model) (coord : C.t) : msg Vdom.t list =
   let open Grammar in
   let grammar = StrDict.get ~key:(C.show coord) m.grammarMap in
   let cells : msg Vdom.t list =
-    StrDict.toList m.grammarMap
-    |> List.map ~f:(fun (coordStr, g) ->
+    grammar
+    |> Option.map ~f:(children m.grammarMap)
+    |> Option.withDefault ~default:[]
+    |> List.map ~f:(fun g ->
+           let coordStr = C.show g.coord in
            let key = "key-" ^ coordStr in
+           let gridRow = C.showPrefix g.coord ^ "-" ^ (g.coord |> C.row |> C.showRow) in
+           let gridCol = C.showPrefix g.coord ^ "-" ^ (g.coord |> C.col |> C.showCol) in
            div
              [ classes
-                 [ "cell"
-                 ; "dropdown"
-                 ; "row-" ^ C.showPrefix coord ^ (coord |> C.row |> C.showRow)
-                 ; "col-" ^ C.showPrefix coord ^ (coord |> C.col |> C.showCol)
+                 [ (*"cell"
+                 ; *)"dropdown"
+                 ; "row-" ^ gridRow
+                 ; "col-" ^ gridCol
                  ]
              ; styles
-                 ( grammar |> Option.map ~f:getCSS
+                 (( grammar |> Option.map ~f:getCSS
                  |> Option.withDefault ~default:[] )
+                 (*@ [ ("grid-column", "grid-column-"^gridCol)
+                   ; ("grid-row", "grid-row-"^gridRow)] *))
              ; id ("cell-" ^ coordStr) ]
              ( match g.mode with
              | Input v ->
@@ -351,15 +350,13 @@ let viewGrid (m : model) (coord : C.t) : msg Vdom.t list =
                      [classes ["cell-data"; "cell-data-" ^ coordStr]; id key]
                      [text v]
                  (*; span [class' "cell-data-coord"] []*) ]
-             | Button (name, gr) ->
+             | Button (name, _) ->
                  [button ~key:(key ^ "_button") [] [text (name ^ g.name)]]
-             | Table layout -> [] ) )
+             | Table _ -> [] ) )
   in
   cells
 
 let view (m : model) : msg Vdom.t =
-  Js.log2 "initial grammarMap: "
-    (StrDict.keys m.grammarMap |> String.join ~sep:" | ") ;
   div
     [ onRightClick (ToggleContextMenu (m.rootGrammar.coord, true))
     ; styles (Grammar.getGridCSS ~root:m.rootGrammar m.grammarMap) ]
