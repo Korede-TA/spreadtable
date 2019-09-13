@@ -73,11 +73,6 @@ let update (m : model) = function
             | None -> None )
           m.grammarMap
       in
-      (*let cellId = "cell-data-" ^ C.show c in
-      let elem = Web_document.getElementById cellId in
-      Js.Null_undefined.iter elem (fun elem ->
-          Web_node.setStyle elem "width" width ) ;
-        *)
       {m with grammarMap}
   | AddNestedTable (c, layout) ->
       let open Grammar in
@@ -307,13 +302,15 @@ let viewContextMenu (m : model) : msg Vdom.t =
                [text name] )
            m.contextMenu.actions) ]
 
-let viewGrid (m : model) (coord : C.t) : msg Vdom.t list =
+let rec viewGrid (m : model) (coord : C.t) : msg Vdom.t list =
   let open Grammar in
   let grammar = StrDict.get ~key:(C.show coord) m.grammarMap in
   let cells : msg Vdom.t list =
     grammar
     |> Option.map ~f:(children m.grammarMap)
     |> Option.withDefault ~default:[]
+    (* sort by row for proper grid ordering *)
+    |> List.sortBy ~f:(fun g -> g.coord |> C.row)
     |> List.map ~f:(fun g ->
            let coordStr = C.show g.coord in
            let key = "key-" ^ coordStr in
@@ -352,7 +349,7 @@ let viewGrid (m : model) (coord : C.t) : msg Vdom.t list =
                  (*; span [class' "cell-data-coord"] []*) ]
              | Button (name, _) ->
                  [button ~key:(key ^ "_button") [] [text (name ^ g.name)]]
-             | Table _ -> [] ) )
+             | Table _ -> (viewGrid m g.coord) ) )
   in
   cells
 
