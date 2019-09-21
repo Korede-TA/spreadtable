@@ -79,8 +79,10 @@ let update (m : model) = function
       let cs = C.show c in
       let parentGrammar = StrDict.get ~key:cs m.grammarMap |> optValueExn in
       let newChildCoords =
-        C.range parentGrammar.coord layout.rows layout.cols 0 0
+        C.range c layout.rows layout.cols 0 0
       in
+      Js.log2 "new childCoords: "
+        (newChildCoords |> List.map ~f:C.show |> String.join ~sep:", ") ;
       (* update tableLayout of parent grammar *)
       let newGrammarMap =
         StrDict.update ~key:cs
@@ -335,9 +337,9 @@ let rec viewGrid (m : model) (coord : C.t) : msg Vdom.t list =
                      [ classes ["cell-data"; key]
                      ; id key
                      ; type' "text"
-                     ; onKeyEnter (ActivateCell coord)
+                     ; onKeyEnter (ActivateCell g.coord)
                      ; onCtrlEnter
-                         (AddNestedTable (coord, defaultNestedTableLayout))
+                         (AddNestedTable (g.coord, defaultNestedTableLayout))
                      ; value v ]
                      []
                    (*; span [class' "cell-data-coord"] [text coordLabel]*)
