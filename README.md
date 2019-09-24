@@ -43,7 +43,8 @@ npm run build
 ## Watch
 
 ```
-npm run watch ```
+npm run watch 
+```
 
 
 # Documentation
