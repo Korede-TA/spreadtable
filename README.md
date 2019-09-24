@@ -43,5 +43,14 @@ npm run build
 ## Watch
 
 ```
-npm run watch
-```
+npm run watch ```
+
+
+# Documentation
+
+The frontend of this project aims to use Elm's functional reactive architecture to build an adaptive, nestable grid layout. 
+
+Data model consists of a Map of coordinates (as strings) to structs representing the individual "Grammars" that make up a 
+representation of a program.
+
+Each grammar (cell) either contains a plain value itself, or contains a nested table of grammars.
